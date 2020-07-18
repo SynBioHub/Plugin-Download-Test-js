@@ -98,4 +98,4 @@ app.post('/Run', function (req, res) {
 	};
 })
 
-app.listen(port, () => console.log(`Test Visualisation app is listening at http://localhost:${port}`))
+app.listen(port, () => console.log(`Test Download app is listening at http://localhost:${port}`))
