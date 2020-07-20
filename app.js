@@ -87,7 +87,11 @@ app.post('/Run', function (req, res) {
         //this file could be a zip archive or any path and file name relative to temp_dir
         var download_file_path = filename
         //////////////////END SECTION//////////////////////////////
-        	res.attachment(filename)
+		
+		//Sets filename parameter to filename
+        res.attachment(download_file_path)
+		
+		//sends file
 		res.sendFile(download_file_path, function(){
 			//clear temp_dir directory
 			fs.rmdirSync(temp_dir, {recursive: true});
