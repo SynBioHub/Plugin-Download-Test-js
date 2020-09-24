@@ -97,7 +97,7 @@ app.post('/Run', function (req, res) {
 			fs.rmdirSync(temp_dir, {recursive: true});
 		});
     } catch (err) {    
-        console.log(err)
+        console.error(err)
 		res.status(400)
 	};
 })
