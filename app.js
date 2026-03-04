@@ -1,6 +1,8 @@
 const express = require('express')
 const path = require('path')
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const app = express();
 const port = 5000
 
@@ -41,7 +43,7 @@ app.post('/Evaluate', function (req, res) {
 
 })
 
-app.post('/Run', function (req, res) {
+app.post('/Run', async function (req, res) {
 	var cwd = __dirname
 	var temp_dir = path.join(cwd, 'temp_dir')
 
@@ -60,22 +62,55 @@ app.post('/Run', function (req, res) {
     var genbank_url = req.body.genbank.toString()
     var size = req.body.size.toString()
     var rdf_type = req.body.type.toString()
-    var shallow_sbol = req.body.shallow_sbol.toString()
+	var shallow_sbol = req.body.shallow_sbol.toString()
+	var token = (typeof req.body.token === 'undefined' || req.body.token === null) ? undefined : req.body.token.toString()
     
-	var url = complete_sbol.replace("/sbol","");
-	
+	var url = complete_sbol.replace("/sbol", "");
+
 	try{
+		
         ////////REPLACE THIS SECTION WITH OWN RUN CODE ////////////
         //read in test.html
 		var filename = path.join(cwd, 'Test.html');
         var result = fs.readFileSync(filename);
 		result = result.toString()
+
+		var tokenVal = (typeof token === 'undefined' || token === null) ? 'null' : token;
+		var headers = { 'Accept': 'text/plain' };
+		if (tokenVal !== 'null') {
+			headers['X-authorization'] = tokenVal;
+		}
+
+		var responseStatusCode = 'ERROR';
+		if (typeof fetch === 'function') {
+			var response = await fetch(url, { method: 'GET', headers: headers });
+			responseStatusCode = response.status;
+		} else {
+			// Fallback for older Node: use http/https without changing control flow elsewhere.
+			responseStatusCode = await new Promise(function(resolve) {
+				var client = url.startsWith('https://') ? https : http;
+				var req2 = client.get(url, { headers: headers }, function(r) {
+					r.on('data', function(){});
+					r.on('end', function(){ resolve(r.statusCode); });
+				});
+				req2.on('error', function(){ resolve('ERROR'); });
+			});
+		}
+
+		
             
         //put in the url, uri, and instance given by synbiohub
 		result = result.replace("URL_REPLACE", url);
         result = result.replace("URI_REPLACE", top_level_url);
+        result = result.replace("TOKEN_REPLACE", tokenVal);
         result = result.replace("INSTANCE_REPLACE", instance_url);
+        result = result.replace("SIZE_REPLACE", String(size));
+        result = result.replace("RDFTYPE_REPLACE", rdf_type);
+        result = result.replace("SHALLOWSBOL_REPLACE", shallow_sbol);
         result = result.replace("REQUEST_REPLACE", data);
+        result = result.replace("RESPONSE_CODE_REPLACE", String(responseStatusCode));
+
+
 
         //write out file
         var out_name = "Out.html"
@@ -88,8 +123,8 @@ app.post('/Run', function (req, res) {
         var download_file_path = filename
         //////////////////END SECTION//////////////////////////////
 		
-		//Sets filename parameter to filename
-        res.attachment(download_file_path)
+		//Sets filename parameter to filename (avoid quoted filename for clients that mis-parse it)
+		res.setHeader('Content-Disposition', 'attachment; filename=' + out_name)
 		
 		//sends file
 		res.sendFile(download_file_path, function(){
